@@ -1,0 +1,311 @@
+﻿@page
+@model DashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container-fluid">
+    <div class="d-flex flex-column flex-grow-1">
+        <div class="flex-grow-1">
+            <div class="container text-center">
+
+                <h1 class="display-4">Admin Dashboard</h1>
+                <p class="lead">Web Access Portal</p>
+
+                    @*   First Row *@
+                <section>
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body">
+                            <h4 class="card-title text-center mb-3">Clients</h4>
+                            <div class="d-flex justify-content-between px-3 mb-2 fw-bold text-secondary small">
+                                <span style="width: 40%;">Client Name</span>
+                                <span style="width: 60%;">KBA URL</span>
+                            </div>
+                            <div class="list-group overflow-auto" style="max-height: 250px;">
+                                @if (Model.ClientNames != null && Model.ClientNames.Any())
+                                {
+                                    foreach (var entry in Model.ClientNames)
+                                    {
+                                        <div class="card mb-2 shadow-sm" role="button" onclick="getClientModal('@entry.Key')" style="cursor: pointer;">
+                                            <div class="card-body d-flex justify-content-between align-items-center p-2">
+                                                <span class="fw-semibold text-primary" style="width: 30%;">@entry.Key</span>
+
+                                                @if (!string.IsNullOrWhiteSpace(entry.Value))
+                                                {
+                                                    <a href="@entry.Value" target="_blank"
+                                                       class="text-truncate ms-2 text-secondary"
+                                                       style="max-width: 60%; display: inline-block;"
+                                                       onclick="event.stopPropagation()">
+                                                        @entry.Value
+                                                    </a>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="list-group-item disabled text-muted">No clients found.</div>
+                                }
+                            </div>
+
+                            <div class="mt-3 text-center">
+                                <button type="button" class="btn btn-success px-4" data-bs-toggle="modal" data-bs-target="#addClientModal">
+                                    Add Client
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+     </section>
+                    @*   Second Row *@
+
+                    <section>
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body">
+                            <h4 class="card-title text-center mb-3">Alerts</h4>
+                            <div class="d-flex justify-content-center px-3 mb-2">
+                                <span class="fw-medium">Total Alerts:</span>
+                                <span class="text-success fw-bold">@Model.TotalAlerts</span>
+                            </div>
+
+                            <div class="d-flex justify-content-between px-3 mb-1 fw-bold text-secondary small">
+                                <span style="width: 15%;">Status</span>
+                                <span style="width: 20%;">Client</span>
+                                <span style="width: 15%;">Elapsed</span>
+                                <span style="width: 50%;">Message</span>
+                            </div>
+
+                            <div class="list-group overflow-auto" style="max-height: 250px;">
+                                @if (Model.CurrentAlerts != null && Model.CurrentAlerts.Any())
+                                {
+                                    foreach (var alert in Model.CurrentAlerts)
+                                    {
+                                        var openedTime = DateTime.TryParse(
+                                        alert.AddedOn,
+                                        null,
+                                        System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+                                        out var added)
+                                        ? $"{(DateTime.UtcNow - added).TotalMinutes:N0} min"
+                                        : "N/A";
+
+                                        <div class="card mb-2 shadow-sm" role="button" onclick="getAlertModal('@alert.AlertID')" style="cursor: pointer;">
+                                            <div class="card-body p-2">
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                                    <span class="fw-bold text-primary" style="width: 15%;">@alert.Status</span>
+                                                    <span class="text-dark" style="width: 20%;">@alert.ClientName</span>
+                                                    <span class="text-muted" style="width: 15%;">@openedTime</span>
+                                                    <span class="text-truncate text-secondary" style="width: 45%;">@alert.Message?.Split('\n').FirstOrDefault()</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="list-group-item disabled text-muted">No alerts found.</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    </section>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+@*Scripts Below this point *@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+
+
+
+
+
+
+@* open Save Client edit *@
+<script>
+    async function saveClient() {
+
+        const client = {
+            ClientName: document.getElementById("clientName").value,
+            KbaUrl: document.getElementById("kbaUrl").value,
+            RemoteLocation: document.getElementById("remoteLocation").value,
+            Timestamp: document.getElementById("timestamp").value,
+            AddedBy: document.getElementById("addedBy").value
+        };
+
+
+        const res = await fetch('/Dashboard?handler=SaveClient', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(client)
+        });
+
+        if (res.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('clientModal'));
+            modal.hide();
+
+         
+            showToast(`${client.ClientName} updated successfully`);
+
+            // ⟳ Refresh the page to update list
+            setTimeout(() => location.reload(), 800);
+        } else {
+            const errorText = await res.text();
+            showToast(`Error: ${errorText}`, true);
+        }
+    }
+</script>
+
+<script>
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+        const clientModal = document.getElementById('clientModal');
+        const contentDiv = document.getElementById('clientModalContent');
+
+        clientModal.addEventListener('hidden.bs.modal', () => {
+            contentDiv.innerHTML = "<div class='text-center'>Loading...</div>";
+        });
+    });
+
+
+    function getClientModal(clientName) {
+        const modal = new bootstrap.Modal(document.getElementById('clientModal'));
+        const contentDiv = document.getElementById('clientModalContent');
+        contentDiv.innerHTML = "<div class='text-center'>Loading...</div>";
+
+        fetch(`/Dashboard?handler=ClientModal&target=${clientName}`)
+            .then(res => res.text())
+            .then(html => {
+                contentDiv.innerHTML = html;
+                document.getElementById("clientModalLabel").innerText = `Edit – ${clientName}`;
+                modal.show();
+            })
+            .catch(() => {
+                contentDiv.innerHTML = "<p class='text-danger'>Failed to load client info.</p>";
+            });
+
+    }
+</script>
+
+
+<script>    function showToast(message, isError = false) {
+        const toast = document.createElement("div");
+        toast.textContent = message;
+        toast.style.position = "fixed";
+        toast.style.bottom = "20px";
+        toast.style.left = "50%";
+        toast.style.transform = "translateX(-50%)";
+        toast.style.background = isError ? "#dc3545" : "#198754"; // Red or green
+        toast.style.color = "#fff";
+        toast.style.padding = "10px 20px";
+        toast.style.borderRadius = "8px";
+        toast.style.boxShadow = "0 0 10px rgba(0,0,0,0.2)";
+        toast.style.zIndex = 9999;
+        toast.style.transition = "opacity 0.4s ease";
+        toast.style.opacity = "1";
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            setTimeout(() => toast.remove(), 400);
+        }, 2500);
+    }</script>
+
+<script>
+    async function getAlertModal(alertId) {
+        const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+        const modalContent = document.querySelector('#alertModal .modal-body');
+        modalContent.innerHTML = "<div class='text-center'>Loading...</div>";
+
+        try {
+            const res = await fetch(`/Dashboard?handler=AlertModal&id=${alertId}`);
+            const html = await res.text();
+            modalContent.innerHTML = html;
+            modal.show();
+        } catch (error) {
+            modalContent.innerHTML = "<p class='text-danger'>Failed to load alert data.</p>";
+            console.error("Modal load failed:", error);
+        }
+    }
+</script>
+
+<script>
+    async function resolveAlert() {
+
+        console.log("Saving alert...");
+        const alert = {
+            AlertID: document.getElementById("alertId").value,
+            ClientName: document.getElementById("alertClientName").value,
+            Status: document.getElementById("alertStatus").value,
+            Resolution: document.getElementById("alertResolution").value,
+            Message: document.getElementById("alertMessage").value
+        };
+
+        const res = await fetch('/Dashboard?handler=SaveAlert', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(alert)
+        });
+
+        if (res.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('alertModal'));
+            modal.hide();
+
+            showToast(`Alert for ${alert.ClientName} saved successfully`);
+
+            // ⟳ Refresh to update visible alert list
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            const errorText = await res.text();
+            showToast(`Error saving alert: ${errorText}`, true);
+        }
+    }
+</script>
+
+<script>
+    async function addClient() {
+
+        console.log("Adding Client...");
+        const client = {
+            ClientName: document.getElementById("clientName").value,
+            KbaUrl: document.getElementById("kbaUrl").value,
+            RemoteLocation: document.getElementById("remoteLocation").value,
+            AddedBy: document.getElementById("addedBy").value
+        };
+
+
+       
+
+        const res = await fetch('/Dashboard?handler=AddClient', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(client)
+        });
+
+        if (res.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addClientModal'));
+            modal.hide();
+
+            showToast(`Client "${client.ClientName}" added successfully!`);
+
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            const errorText = await res.text();
+            showToast(`Error saving alert: ${errorText}`, true);
+        }
+    }
+</script>
