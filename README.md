@@ -65,5 +65,7 @@ All runtime paths and environment-specific details are loaded from:
 
 ```plaintext
 app.config
-
+Template Provided for filling in. 
+```
 This application was built as a functional concept during my time at The IT Support Center, but all code and structure remain my original work. It is shared here as part of my personal portfolio.
+
