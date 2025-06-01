@@ -45,8 +45,8 @@
 <body>
     @{
         var hideSidebar = ViewData["HideSidebar"] as bool? ?? false;
-    }
-
+        string  username = Context.Session.GetString("Username") ?? "Guest";
+        }
     
         <div id="wrapper">
             @if (!hideSidebar)
@@ -54,6 +54,9 @@
                  <text>
                 <div id="sidebar-wrapper">
                 <div class="sidebar-heading text-center text-white fw-bold fs-4 mb-4">Client Quick Access</div>
+                    <div class="sidebar-heading text-center text-white fw-bold fs-4 mb-4">Welcome,</div>
+                    <div class="sidebar-heading text-center text-white fw-bold fs-4 mb-4">@username</div>
+           
                 <div class="list-group list-group-flush">
                     <a asp-page="/Dashboard" class="list-group-item list-group-item-action">Dashboard</a>
                 </div>

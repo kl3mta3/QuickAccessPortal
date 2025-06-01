@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using RemoteAccessPortal.Config;
+using RemoteAccessPortal.Classes;
+using RemoteAccessPortal.Dashboard;
+using RemoteAccessPortal.Database;
+using System.Threading.Tasks;
 
 
 public class IndexModel : PageModel
@@ -25,17 +29,24 @@ public class IndexModel : PageModel
 
     }
 
-    public IActionResult OnPost()
+    public async Task<IActionResult> OnPost()
     {
-        if (Username == Config.AdminUsername && Config.HashPassword(Password).SequenceEqual(Config.AdminPassword))
+
+        string usernameLower = Username.ToLower();
+        string userHash = Config.HashString(usernameLower);
+        string authKey = Config.HashString(usernameLower + "|" + Password);
+        User user = await DatabaseManager.GetUserByUserHash(usernameLower);
+        if (user != null && authKey == user.AuthKey && user.IsAdmin == true)
         {
             HttpContext.Session.SetString("IsLoggedIn", "true");
-            return RedirectToPage("/Dashboard"); 
+
+            HttpContext.Session.SetString("Username", Config.CapitalizeFirstLetter(Username));
+            return RedirectToPage("/Dashboard");
         }
         else
         {
             ModelState.AddModelError(string.Empty, "Invalid login attempt.");
-            return Page(); 
+            return Page();
         }
     }
 

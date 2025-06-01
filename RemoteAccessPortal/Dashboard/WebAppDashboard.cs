@@ -14,6 +14,8 @@ namespace RemoteAccessPortal.Dashboard
         internal static string WebAppIP { get; set; }
         internal static int WebAppPort { get; set; }
         internal static int ClientPort { get; set; }
+        internal static string AdminUserHash { get; set; }
+
 
 
         public static WebApplication CreateWebApp(string[] args, int port)
@@ -89,11 +91,25 @@ namespace RemoteAccessPortal.Dashboard
 
                 app.MapPost("/update", async (HttpContext context) =>
                 {
+
+                    string APISecret = "";
+
+                    //if (!context.Request.Headers.TryGetValue("X-API-Token", out var token) || token != APISecret)
+                    //{
+                    //    context.Response.StatusCode = 403;
+                    //    await context.Response.WriteAsync("Forbidden");
+                    //    return;
+                    //}
+
                     var cancellationToken = context.RequestAborted;
                     cancellationToken.Register(() =>
                     {
                         throw new OperationCanceledException("Client disconnected mid-response!");
                     });
+
+
+
+
 
                     var clients = await GetClientList();
 

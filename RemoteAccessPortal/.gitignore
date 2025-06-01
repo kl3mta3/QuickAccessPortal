@@ -8,6 +8,7 @@
 *.suo
 *.user
 *.config
+.db
 *.userosscache
 *.sln.docstates
 

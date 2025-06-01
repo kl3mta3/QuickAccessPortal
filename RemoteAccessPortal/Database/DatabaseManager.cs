@@ -1,7 +1,10 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Net.Sockets;
 using RemoteAccessPortal.Classes;
+using RemoteAccessPortal.Config;
 using RemoteAccessPortal.Dashboard;
+using Microsoft.AspNetCore.Http.HttpResults;
+using System.Xml.Linq;
 
 namespace RemoteAccessPortal.Database
 {
@@ -44,12 +47,44 @@ namespace RemoteAccessPortal.Database
                 Status TEXT,
                 Resolution TEXT,
                 Message TEXT
-            );";
+            );
+                
+
+                CREATE TABLE IF NOT EXISTS Users(
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT,
+                Username TEXT,
+                UserHash TEXT,
+                AuthKey TEXT,
+                IsAdmin BOOL
+            ); ";
 
 
                 command.ExecuteNonQuery();
 
 
+                Dictionary<string, string> clientData = await DatabaseManager.GetClientDictAsync();
+                List<Alert> currentAlerts = await DatabaseManager.GetCurrentAlerts();
+
+
+
+                if (clientData == null || clientData.Count == 0)
+                {
+                    await SeedRandomClients(20);
+                }
+
+                if (currentAlerts == null || currentAlerts.Count == 0)
+                {
+                    await SeedFakeAlerts();
+                }
+
+                string adminUserHash = await Config.Config.GetAdminUserHash();
+                User user = await GetUserByUserHash(adminUserHash);
+                if (user==null)
+                {
+
+                    await Config.Config.InitializeAdmin();
+                }
 
             }
             catch (Exception ex)
@@ -263,6 +298,7 @@ namespace RemoteAccessPortal.Database
             }
         }
 
+
         //Alert DB manager methods
         public static async Task InsertAlert(string clientName, string addedBy, string message)
         {
@@ -309,7 +345,7 @@ namespace RemoteAccessPortal.Database
             WHERE AlertID = @alertID";
 
                 command.Parameters.AddWithValue("@status", alert.Status);
-                command.Parameters.AddWithValue("@resolvedOn", alert.ResolvedOn ?? ""); 
+                command.Parameters.AddWithValue("@resolvedOn", alert.ResolvedOn ?? "");
                 command.Parameters.AddWithValue("@resolution", alert.Resolution ?? "");
                 command.Parameters.AddWithValue("@message", alert.Message ?? "");
                 command.Parameters.AddWithValue("@alertID", alert.AlertID);
@@ -424,7 +460,7 @@ namespace RemoteAccessPortal.Database
                 {
                     return new Alert()
                     {
-                       
+
                         AlertID = reader.GetString(reader.GetOrdinal("AlertID")),
                         ClientName = reader.GetString(reader.GetOrdinal("ClientName")),
                         AddedBy = reader.GetString(reader.GetOrdinal("AddedBy")),
@@ -474,6 +510,155 @@ namespace RemoteAccessPortal.Database
             }
         }
 
+
+        // User DB manager methods
+        public static async Task<bool> UserExists(string username)
+        {
+            string userHash = Config.Config.HashString(username.ToLower());
+
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+
+                command.CommandText = @"
+                SELECT COUNT(*) 
+                FROM Users 
+                WHERE UserHash = @userHash";
+
+                command.Parameters.AddWithValue("@userHash", userHash); 
+
+                var count = (long)await command.ExecuteScalarAsync();
+                return count > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking if user exists: {ex.Message}", ex);
+            }
+        }
+
+        public static async Task<bool> IsUserAdmin(string username)
+        {
+            string userHash = Config.Config.HashString(username.ToLower());
+
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                SELECT IsAdmin 
+                FROM Users 
+                WHERE UserHash = @userHash";
+
+                command.Parameters.AddWithValue("@userHash", userHash);
+
+                var result = await command.ExecuteScalarAsync();
+                return result != null && Convert.ToBoolean(result);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking if user is admin: {ex.Message}", ex);
+            }
+        }
+
+        public static async Task<User?> GetUserByUserHash(string userHash)
+        {
+           
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                SELECT * 
+                FROM Users 
+                WHERE UserHash = @userHash";
+                command.Parameters.AddWithValue("@userHash", userHash);
+                using var reader = await command.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    return new User
+                    {
+                        Username = userHash,
+                        Name = reader.GetString(reader.GetOrdinal("Name")),
+                        UserHash = userHash,
+                        AuthKey = reader.GetString(reader.GetOrdinal("AuthKey")),
+                        IsAdmin = reader.GetBoolean(reader.GetOrdinal("IsAdmin"))
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving user: {ex.Message}", ex);
+            }
+            return null;
+        }
+
+        public static async Task AddUserToDatabase(User user)
+        {
+
+
+            try
+            {
+        
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                INSERT INTO Users (Name, Username, UserHash, AuthKey, IsAdmin)
+                VALUES (@name, @username, @userHash, @authKey, @isAdmin)";
+                command.Parameters.AddWithValue("@name", user.Name);
+                command.Parameters.AddWithValue("@username", user.Username);
+                command.Parameters.AddWithValue("@userHash", user.UserHash);
+                command.Parameters.AddWithValue("@authKey", user.AuthKey);
+                command.Parameters.AddWithValue("@isAdmin", user.IsAdmin);
+                await command.ExecuteNonQueryAsync();
+
+                List<User> allUsers = await GetAllUsers();
+                int totalUsers = allUsers.Count;
+
+            }
+            catch (Exception ex)
+            {
+
+                throw new Exception($"Error adding user to database: {ex.Message}", ex);
+            }
+        }
+
+        public static async Task<List<User>> GetAllUsers()
+        {
+            List<User> users = new List<User>();
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = "SELECT * FROM Users";
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    User user = new User
+                    {
+                        Username = reader.GetString(reader.GetOrdinal("Username")),
+                        Name = reader.GetString(reader.GetOrdinal("Name")),
+                        UserHash = reader.GetString(reader.GetOrdinal("UserHash")),
+                        AuthKey = reader.GetString(reader.GetOrdinal("AuthKey")),
+                        IsAdmin = reader.GetBoolean(reader.GetOrdinal("IsAdmin"))
+                    };
+                    users.Add(user);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving all users: {ex.Message}", ex);
+            }
+            return users;
+        }
+
+
         //for Testing to populate an empty DB
         public static async Task SeedFakeAlerts(int count = 10)
         {
@@ -493,14 +678,13 @@ namespace RemoteAccessPortal.Database
 
             for (int i = 0; i < count; i++)
             {
-                string clientName = animals[random.Next(1, 20)]+ sufixes[random.Next(sufixes.Count)];
+                string clientName = animals[random.Next(1, 20)] + sufixes[random.Next(sufixes.Count)];
                 string addedBy = $"Tech_{random.Next(1, 10)}";
                 string message = $"Test alert #{i + 1} - Possible issue detected.";
 
                 await InsertAlert(clientName, addedBy, message);
             }
 
-            Console.WriteLine($"Seeded {count} fake alerts using InsertAlert().");
         }
 
         public static async Task SeedRandomClients(int count = 20)
