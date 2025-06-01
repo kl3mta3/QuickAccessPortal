@@ -4,7 +4,7 @@ A streamlined internal web application designed to simplify client management, r
 
 ---
 
-##  Features
+## Features
 
 - **Client List Dashboard**
   - View and manage a full list of clients with intuitive search and filtering.
@@ -34,9 +34,9 @@ A streamlined internal web application designed to simplify client management, r
 
 ---
 
-##  How It Works
+## How It Works
 
-###  Adding Clients
+### Adding Clients
 1. Use the `Clients` page to open the “Add New Client” form.
 2. Fill in:
    - Client Name
@@ -45,21 +45,21 @@ A streamlined internal web application designed to simplify client management, r
    - Any known issues or alerts
 3. Save to immediately populate the client list.
 
-###  Accessing Client Info
+### Accessing Client Info
 - From the **Dashboard**, click on any client to open a **modal overlay** with:
   - Remote Access links
   - Internal KB fields
   - Issue logs
 - From the **Clients Page**, click to fully edit or delete clients.
 
-### ⚠ Reporting Issues
+### Reporting Issues
 - Within any client modal, click **“Report Issue”**.
 - Describe the problem and categorize it (e.g., Network, Access, Software).
 - Issues are timestamped and stored for reference or handoff.
 
 ---
 
-##  Configuration
+## Configuration
 
 All runtime paths and environment-specific details are loaded from:
 
