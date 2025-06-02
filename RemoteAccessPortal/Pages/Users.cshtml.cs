@@ -163,11 +163,23 @@ public class UsersModel : PageModel
     {
         User data = payload.User;
         string password = payload.Password;
+        data.Username = data.Username.ToLower();
 
-        if (data == null || string.IsNullOrEmpty(data.Name) || string.IsNullOrEmpty(data.Username) || string.IsNullOrEmpty(password))
+        if (data == null)
         {
-            return BadRequest("User data not parsed.");
+            return BadRequest("User data null.");
         }
+
+        if (string.IsNullOrEmpty(password))
+        {
+            return StatusCode(400, "Password cannot be empty.");
+        }
+
+        if (string.IsNullOrEmpty(data.Username) || string.IsNullOrEmpty(data.Name))
+        {
+            return StatusCode(400, "Username and Name cannot be empty.");
+        }
+
         if (!Regex.IsMatch(password, "[A-Z]"))
             return StatusCode(400, "Password must contain at least one uppercase letter.");
         if (!Regex.IsMatch(password, "[a-z]"))
@@ -178,9 +190,10 @@ public class UsersModel : PageModel
             return StatusCode(400, "Password must be at least 8 characters long.");
         if (password.Length > 24)
             return StatusCode(400, "Password must be less than 24 characters long.");
-        data.UserHash = Config.HashString(data.Username);
+
+        data.UserHash = Config.HashString(data.Username.ToLower());
         data.PasswordHash = Config.HashPassword(password);
-        data.AuthKey = Config.HashString(data.Username + "|" + password);
+        data.ApiKey = Config.HashString($"{data.Username.ToLower().Trim()}|{password}");
 
         await DatabaseManager.InsertUser(data);
         return new JsonResult(new { success = true });

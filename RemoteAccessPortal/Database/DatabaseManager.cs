@@ -5,6 +5,7 @@ using RemoteAccessPortal.Config;
 using RemoteAccessPortal.Dashboard;
 using Microsoft.AspNetCore.Http.HttpResults;
 using System.Xml.Linq;
+using System.Reflection.PortableExecutable;
 
 namespace RemoteAccessPortal.Database
 {
@@ -56,7 +57,7 @@ namespace RemoteAccessPortal.Database
                 Username TEXT,
                 UserHash TEXT,
                 PasswordHash TEXT,
-                AuthKey TEXT,
+                ApiKey TEXT,
                 IsAdmin BOOL
             ); ";
 
@@ -189,6 +190,7 @@ namespace RemoteAccessPortal.Database
                     if (!clientData.ContainsKey(name))
                         clientData[name] = kbaUrl;
                 }
+                reader.Close();
             }
             catch (Exception ex)
             {
@@ -225,10 +227,10 @@ namespace RemoteAccessPortal.Database
                         KbaUrl = reader.GetString(reader.GetOrdinal("KbaUrl")),
                         RemoteLocation = reader.GetString(reader.GetOrdinal("RemoteLocation")),
                     };
-
+                    reader.Close();
                     return client;
                 }
-
+            
             }
             catch (Exception ex)
             {
@@ -267,12 +269,13 @@ namespace RemoteAccessPortal.Database
 
                     clients.Add(client);
                 }
+                    reader.Close();
             }
             catch (Exception ex)
             {
                 throw new Exception($"Error retrieving all clients: {ex.Message}", ex);
             }
-
+           
             return clients;
 
         }
@@ -392,6 +395,7 @@ namespace RemoteAccessPortal.Database
 
                     alerts.Add(alert);
                 }
+                reader.Close();
             }
             catch (Exception ex)
             {
@@ -432,6 +436,7 @@ namespace RemoteAccessPortal.Database
 
                     alerts.Add(alert);
                 }
+                reader.Close();
             }
             catch (Exception ex)
             {
@@ -459,7 +464,7 @@ namespace RemoteAccessPortal.Database
                 using var reader = await command.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
                 {
-                    return new Alert()
+                    Alert alert = new Alert()
                     {
 
                         AlertID = reader.GetString(reader.GetOrdinal("AlertID")),
@@ -470,10 +475,12 @@ namespace RemoteAccessPortal.Database
                         Status = reader.GetString(reader.GetOrdinal("Status")),
                         Resolution = reader.IsDBNull(reader.GetOrdinal("Resolution")) ? null : reader.GetString(reader.GetOrdinal("Resolution")),
                         Message = reader.GetString(reader.GetOrdinal("Message"))
-                    }
-                ;
-                }
 
+                    };
+                        reader.Close();
+                    ;   return alert;
+                }
+                
                 return null;
             }
             catch (Exception ex)
@@ -586,11 +593,12 @@ namespace RemoteAccessPortal.Database
                         Name = reader.GetString(reader.GetOrdinal("Name")),
                         Username = reader.GetString(reader.GetOrdinal("Username")),
                         UserHash = userHash,
-                        AuthKey = reader.GetString(reader.GetOrdinal("AuthKey")),
+                        ApiKey = reader.GetString(reader.GetOrdinal("ApiKey")),
                         PasswordHash = reader.GetString(reader.GetOrdinal("PasswordHash")),
                         IsAdmin = reader.GetBoolean(reader.GetOrdinal("IsAdmin"))
                     };
                 }
+                reader.Close();
             }
             catch (Exception ex)
             {
@@ -614,13 +622,13 @@ namespace RemoteAccessPortal.Database
                 await connection.OpenAsync();
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                INSERT INTO Users (Name, PasswordHash, Username, UserHash, AuthKey, IsAdmin)
-                VALUES (@name, @passwordHash, @username, @userHash, @authKey, @isAdmin)";
+                INSERT INTO Users (Name, PasswordHash, Username, UserHash, ApiKey, IsAdmin)
+                VALUES (@name, @passwordHash, @username, @userHash, @apiKey, @isAdmin)";
                 command.Parameters.AddWithValue("@name", user.Name);
                 command.Parameters.AddWithValue("@username", user.Username);
                 command.Parameters.AddWithValue("@passwordHash", user.PasswordHash);
                 command.Parameters.AddWithValue("@userHash", user.UserHash);
-                command.Parameters.AddWithValue("@authKey", user.AuthKey);
+                command.Parameters.AddWithValue("@apiKey", user.ApiKey);
                 command.Parameters.AddWithValue("@isAdmin", user.IsAdmin);
                 await command.ExecuteNonQueryAsync();
 
@@ -651,11 +659,12 @@ namespace RemoteAccessPortal.Database
                         Username = reader.GetString(reader.GetOrdinal("Username")),
                         Name = reader.GetString(reader.GetOrdinal("Name")),
                         UserHash = reader.GetString(reader.GetOrdinal("UserHash")),
-                        AuthKey = reader.GetString(reader.GetOrdinal("AuthKey")),
+                        ApiKey = reader.GetString(reader.GetOrdinal("ApiKey")),
                         IsAdmin = reader.GetBoolean(reader.GetOrdinal("IsAdmin"))
                     };
                     users.Add(user);
                 }
+                reader.Close();
             }
             catch (Exception ex)
             {
@@ -687,6 +696,58 @@ namespace RemoteAccessPortal.Database
             }
         }
 
+        internal static async Task<bool> UserApiKeyExists(string apiKey)
+        {
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                SELECT COUNT(*) 
+                FROM Users 
+                WHERE ApiKey = @apiKey";
+                command.Parameters.AddWithValue("@apiKey", apiKey);
+                var count = (long)await command.ExecuteScalarAsync();
+                return count > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking if user apiKey exists: {ex.Message}", ex);
+            }
+        }
+
+        internal static async Task<String> GetUserApiKeyWithUserHash(string userHash)
+        {
+            try
+            {
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                SELECT * 
+                FROM Users 
+                WHERE UserHash = @userHash";
+                command.Parameters.AddWithValue("@userHash", userHash);
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                   User user = new User
+                    {
+                        ApiKey = reader.GetString(reader.GetOrdinal("ApiKey")),
+                    };
+                     return Convert.ToString(user.ApiKey);
+                }
+
+                reader.Close();
+                return string.Empty; 
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking if user auth key exists: {ex.Message}", ex);
+            }
+        }
 
         internal static async Task<bool> UpdateUser(User user, string originalUsername)
         {
@@ -726,7 +787,7 @@ namespace RemoteAccessPortal.Database
         {
             try
             {
-                string authKey = Config.Config.HashString(username.ToLower() + "|" + newPassword);
+                string apiKey = Config.Config.HashString(username.ToLower() + "|" + newPassword);
                 string passwordHash = Config.Config.HashPassword(newPassword);
 
                 using var connection = new SqliteConnection($"Data Source={dbPath}");
@@ -735,11 +796,11 @@ namespace RemoteAccessPortal.Database
                 var command = connection.CreateCommand();
                 command.CommandText = @"
                 UPDATE Users
-                SET AuthKey = @authKey,
+                SET ApiKey = @apiKey,
                     PasswordHash = @passwordHash
                 WHERE Username = @username";
 
-                command.Parameters.AddWithValue("@authKey", authKey);
+                command.Parameters.AddWithValue("@apiKey", apiKey);
                 command.Parameters.AddWithValue("@passwordHash", passwordHash);
                 command.Parameters.AddWithValue("@username", username);
 

@@ -5,6 +5,7 @@ using RemoteAccessPortal.Database;
 using RemoteAccessPortal.Classes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 namespace RemoteAccessPortal.Dashboard
 {
@@ -92,14 +93,14 @@ namespace RemoteAccessPortal.Dashboard
                 app.MapPost("/update", async (HttpContext context) =>
                 {
 
-                    string APISecret = "";
 
-                    //if (!context.Request.Headers.TryGetValue("X-API-Token", out var token) || token != APISecret)
-                    //{
-                    //    context.Response.StatusCode = 403;
-                    //    await context.Response.WriteAsync("Forbidden");
-                    //    return;
-                    //}
+
+                    if (!context.Request.Headers.TryGetValue("X-API-Token", out var token) || !await DatabaseManager.UserApiKeyExists(token))
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsync("Forbidden");
+                        return Results.Json(null);
+                    }
 
                     var cancellationToken = context.RequestAborted;
                     cancellationToken.Register(() =>
@@ -111,13 +112,93 @@ namespace RemoteAccessPortal.Dashboard
 
 
 
-                    var clients = await GetClientList();
+                    var clients = DatabaseManager.Clients; ;
 
                     return Results.Json(clients);
                 });
 
+
+
+                app.MapPost("/logon", async (HttpContext context, NewLogonRequest payload) =>
+                {
+                
+
+                    string userHash = payload.HashedUsername;
+                    string password = payload.HashedPassword;
+                    if ( string.IsNullOrWhiteSpace(password))
+                    {
+
+                           context.Response.StatusCode = 403;
+                           await context.Response.WriteAsync("Forbidden: Password Missing.");
+                           return Results.Json(null); ;
+                    }
+
+                    User user = await DatabaseManager.GetUserByUserHash(userHash);
+
+                    if (user == null)
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsync("Forbidden: User not found");
+                        return Results.Json(null);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(userHash))
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsync("Forbidden: Username Incorrect");
+                        return Results.Json(null);
+                    }
+
+                    if (!Config.Config.VerifyPassword(password, user.PasswordHash))
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsync("Forbidden: Password Incorrect");
+                        return Results.Json(null);
+                    }
+
+                    string ApiKey = await DatabaseManager.GetUserApiKeyWithUserHash(userHash);
+
+                    if (string.IsNullOrWhiteSpace(ApiKey))
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsync("Forbidden: ApiKey Missing");
+                        return Results.Json(null);
+                    }
+
+
+                    if (!context.Request.Headers.TryGetValue("X-API-Token", out var token) || token != ApiKey)
+                    {
+                        Console.WriteLine($"ApiKey: {token} does not match {ApiKey} for user {user.Username} with userHash {user.UserHash}");
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsync("Forbidden: ApiKey Incorrect");
+                        return Results.Json(null);
+                    }
+
+                    var cancellationToken = context.RequestAborted;
+                    cancellationToken.Register(() =>
+                    {
+                        throw new OperationCanceledException("Client disconnected mid-response!");
+                    });
+
+                    var clients = DatabaseManager.Clients;
+
+                    return Results.Json(clients);
+                });
+
+
+
                 app.MapPost("/alert", async (HttpContext context, NewAlertRequest alert) =>
                 {
+
+
+                    if (!context.Request.Headers.TryGetValue("X-API-Token", out var token) || !await DatabaseManager.UserApiKeyExists(token))
+                    {
+                        context.Response.StatusCode = 403;
+                        await context.Response.WriteAsync("Forbidden");
+                        return Results.Json(null);
+                    }
+
+
                     var cancellationToken = context.RequestAborted;
 
                     cancellationToken.Register(() =>

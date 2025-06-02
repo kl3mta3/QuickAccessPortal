@@ -9,7 +9,7 @@ namespace RemoteAccessPortal.Classes
         public string Username { get; set; }
         public string UserHash { get; set; }
         public string PasswordHash { get; set; }
-        public string AuthKey { get; set; }
+        public string ApiKey { get; set; }
         public bool IsAdmin { get; set; }
 
 
@@ -25,7 +25,7 @@ namespace RemoteAccessPortal.Classes
                 Name = name,
                 UserHash = userHash,
                 PasswordHash = Config.Config.HashPassword(password),
-                AuthKey = authKey,
+                ApiKey = authKey,
                 IsAdmin = isAdmin
             };
 

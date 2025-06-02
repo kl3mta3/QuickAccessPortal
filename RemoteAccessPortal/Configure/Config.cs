@@ -155,15 +155,15 @@ namespace RemoteAccessPortal.Config
                 User adminUser = new User
                 {
 
-                    Username = config.AdminUsername,
+                    Username = config.AdminUsername.ToLower(),
                     Name = "Admin",
                     UserHash = HashString(config.AdminUsername),
                     PasswordHash = adminPassHash,
-                    AuthKey = HashString(config.AdminUsername + "|" + config.AdminPassword),
+                    ApiKey = HashString(config.AdminUsername.ToLower() + "|" + config.AdminPassword),
                     IsAdmin = true
 
                 };
-                Console.WriteLine($"Admin PassHash from saving. : {adminUser.PasswordHash}");
+
                 await DatabaseManager.InsertUser(adminUser);
             }
             catch (Exception ex)
