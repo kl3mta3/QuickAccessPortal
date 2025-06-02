@@ -79,5 +79,6 @@ All runtime paths and environment-specific details are loaded from:
 app.config
 Template Provided. 
 ```
-This application was built as a functional concept during my time at The IT Support Center, but all code and structure remain my original work. It is shared here as part of my personal portfolio.
+## About This Project
+This application was designed and built during my time working in internal IT support, and while used in a real environment, all code and architectural decisions are my own. It is shared here as part of my personal portfolio to demonstrate full-stack architecture, secure authentication flows, and a responsive multi-role UI system.
 
