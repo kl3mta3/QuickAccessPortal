@@ -1,4 +1,4 @@
-#  Remote Access Portal
+#  Quick Access Portal
 
 A streamlined internal web application designed to simplify client management, remote access, and issue tracking. Built for IT teams who need fast, reliable, and secure access to their client infrastructure and support documentation — all in one place.
 
