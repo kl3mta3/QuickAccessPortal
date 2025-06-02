@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "RemoteAccessPortal": {
+    "QuickAccessPortal": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
