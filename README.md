@@ -2,6 +2,10 @@
 
 A secure, streamlined internal web application for managing clients, credentials, remote systems, and support documentation. Built for IT teams who need fast, reliable, and safe access to infrastructure and client records — all in one place.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kl3mta3/QuickAccessPortal/master/img/dashboard.png" alt="Dashboard Preview" width="400">
+</p>
+
 ---
 
 ## Features
@@ -16,6 +20,7 @@ A secure, streamlined internal web application for managing clients, credentials
 - Password requirements enforced (uppercase, lowercase, number, 8–24 chars).
 - Optional “Remember Username” for faster logins on client devices.
 - Real-time validation and toast feedback built in.
+
 
 ### Client List Dashboard
 - View and manage a full list of clients with intuitive search and filtering.
@@ -57,6 +62,10 @@ A secure, streamlined internal web application for managing clients, credentials
    - Secure Password (meets all policy rules)
 4. Save to grant immediate access.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kl3mta3/QuickAccessPortal/master/img/add_user.png" alt="Add User Preview" width="300">
+</p>
+
 ### Logging In
 - On app launch, users are prompted to log in.
 - The application uses:
@@ -64,12 +73,17 @@ A secure, streamlined internal web application for managing clients, credentials
   - **API key header validation**
   - **Username normalization** (case-insensitive matching)
 - Users without valid credentials or keys are rejected.
-
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kl3mta3/QuickAccessPortal/master/img/sign_in.png" alt="Sign In Preview" width="300">
+</p>
 ### Editing Users
 - Admins can update name, username, or password.
 - Admin accounts are protected from deletion.
 - Password changes require validation and immediate effect.
 ---
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kl3mta3/QuickAccessPortal/master/img/edit_user.png" alt="Edit User Preview" width="400">
+</p>
 
 ## Configuration
 
