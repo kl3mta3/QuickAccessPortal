@@ -101,7 +101,7 @@ namespace RemoteAccessPortal.Database
         {
             try
             {
-                Client client = GetClient(clientName);
+                Client client = await GetClient(clientName);
                 if (client != null)
                 {
                     throw new InvalidOperationException($"Client with name '{clientName}' already exists.");
