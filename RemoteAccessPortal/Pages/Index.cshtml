@@ -33,11 +33,9 @@
             </div>
         </div>
 
-        @if (!ModelState.IsValid)
+        @foreach (var modelError in ViewData.ModelState.Values.SelectMany(v => v.Errors))
         {
-            <div class="text-danger mt-2">
-                Invalid username or password.
-            </div>
+            <div class="text-danger mt-2">@modelError.ErrorMessage</div>
         }
     </form>
    

@@ -55,6 +55,7 @@ namespace RemoteAccessPortal.Database
                 Name TEXT,
                 Username TEXT,
                 UserHash TEXT,
+                PasswordHash TEXT,
                 AuthKey TEXT,
                 IsAdmin BOOL
             ); ";
@@ -503,9 +504,9 @@ namespace RemoteAccessPortal.Database
                 var rowsAffected = await command.ExecuteNonQueryAsync();
                 return rowsAffected > 0;
             }
-            catch (Exception ex)
+            catch (Exception )
             {
-                Console.WriteLine($"Error deleting alert: {ex.Message}");
+
                 throw;
             }
         }
@@ -582,10 +583,11 @@ namespace RemoteAccessPortal.Database
                 {
                     return new User
                     {
-                        Username = userHash,
                         Name = reader.GetString(reader.GetOrdinal("Name")),
+                        Username = reader.GetString(reader.GetOrdinal("Username")),
                         UserHash = userHash,
                         AuthKey = reader.GetString(reader.GetOrdinal("AuthKey")),
+                        PasswordHash = reader.GetString(reader.GetOrdinal("PasswordHash")),
                         IsAdmin = reader.GetBoolean(reader.GetOrdinal("IsAdmin"))
                     };
                 }
@@ -597,21 +599,26 @@ namespace RemoteAccessPortal.Database
             return null;
         }
 
-        public static async Task AddUserToDatabase(User user)
+        public static async Task InsertUser(User user )
         {
 
 
             try
             {
-        
+                if (await GetUserByUserHash(user.UserHash) != null)
+                {
+                    throw new InvalidOperationException("User already exists.");
+                }
+
                 using var connection = new SqliteConnection($"Data Source={dbPath}");
                 await connection.OpenAsync();
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                INSERT INTO Users (Name, Username, UserHash, AuthKey, IsAdmin)
-                VALUES (@name, @username, @userHash, @authKey, @isAdmin)";
+                INSERT INTO Users (Name, PasswordHash, Username, UserHash, AuthKey, IsAdmin)
+                VALUES (@name, @passwordHash, @username, @userHash, @authKey, @isAdmin)";
                 command.Parameters.AddWithValue("@name", user.Name);
                 command.Parameters.AddWithValue("@username", user.Username);
+                command.Parameters.AddWithValue("@passwordHash", user.PasswordHash);
                 command.Parameters.AddWithValue("@userHash", user.UserHash);
                 command.Parameters.AddWithValue("@authKey", user.AuthKey);
                 command.Parameters.AddWithValue("@isAdmin", user.IsAdmin);
@@ -619,7 +626,6 @@ namespace RemoteAccessPortal.Database
 
                 List<User> allUsers = await GetAllUsers();
                 int totalUsers = allUsers.Count;
-
             }
             catch (Exception ex)
             {
@@ -657,6 +663,95 @@ namespace RemoteAccessPortal.Database
             }
             return users;
         }
+
+        internal static async Task<bool> DeleteUserByUsername(string username)
+        {
+            try
+            {   
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                DELETE FROM Users
+                WHERE Username = @username AND IsAdmin = 0";
+
+                command.Parameters.AddWithValue("@username", username);
+
+                var rowsAffected = await command.ExecuteNonQueryAsync();
+                return rowsAffected > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error deleting user: {ex.Message}", ex);
+            }
+        }
+
+
+        internal static async Task<bool> UpdateUser(User user, string originalUsername)
+        {
+            try
+            {
+                string newUserHash = Config.Config.HashString(user.Username.ToLower());
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                UPDATE Users
+                SET 
+                    Username = @newUsername,
+                    UserHash = @newUserHash,
+                    Name = @name,
+                    IsAdmin = @isAdmin
+                WHERE Username = @originalUsername";
+
+                command.Parameters.AddWithValue("@newUsername", user.Username);
+                command.Parameters.AddWithValue("@newUserHash", newUserHash);
+                command.Parameters.AddWithValue("@name", user.Name);
+                command.Parameters.AddWithValue("@isAdmin", user.IsAdmin);
+                command.Parameters.AddWithValue("@originalUsername", originalUsername);
+
+
+                var rowsAffected = await command.ExecuteNonQueryAsync();
+                return rowsAffected > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error updating user: {ex.Message}", ex);
+            }
+        }
+
+        internal static async Task<bool> UpdateUserPassword(string username, string newPassword)
+        {
+            try
+            {
+                string authKey = Config.Config.HashString(username.ToLower() + "|" + newPassword);
+                string passwordHash = Config.Config.HashPassword(newPassword);
+
+                using var connection = new SqliteConnection($"Data Source={dbPath}");
+                await connection.OpenAsync();
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                UPDATE Users
+                SET AuthKey = @authKey,
+                    PasswordHash = @passwordHash
+                WHERE Username = @username";
+
+                command.Parameters.AddWithValue("@authKey", authKey);
+                command.Parameters.AddWithValue("@passwordHash", passwordHash);
+                command.Parameters.AddWithValue("@username", username);
+
+                var rowsAffected = await command.ExecuteNonQueryAsync();
+                return rowsAffected > 0;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error updating user password: {ex.Message}", ex);
+            }
+        }
+
 
 
         //for Testing to populate an empty DB

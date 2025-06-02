@@ -153,7 +153,7 @@ public class AlertsModel : PageModel
     }
 
     [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> OnDeleteDeleteCurrentAlert(string id)
+    public async Task<IActionResult> OnDeleteCurrentAlert(string id)
     {
         try
         {

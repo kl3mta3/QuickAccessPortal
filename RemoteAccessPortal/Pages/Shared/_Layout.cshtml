@@ -45,7 +45,8 @@
 <body>
     @{
         var hideSidebar = ViewData["HideSidebar"] as bool? ?? false;
-        string  username = Context.Session.GetString("Username") ?? "Guest";
+        string  firstName = Context.Session.GetString("FirstName") ?? "Guest";
+        string username = Context.Session.GetString("Username") ?? "Guest";
         }
     
         <div id="wrapper">
@@ -54,8 +55,8 @@
                  <text>
                 <div id="sidebar-wrapper">
                 <div class="sidebar-heading text-center text-white fw-bold fs-4 mb-4">Client Quick Access</div>
-                    <div class="sidebar-heading text-center text-white fw-bold fs-4 mb-4">Welcome,</div>
-                    <div class="sidebar-heading text-center text-white fw-bold fs-4 mb-4">@username</div>
+                    <div class="sidebar-heading text-center text-white fw-bold fs-4 mb-4">Welcome, @firstName</div>
+                    
            
                 <div class="list-group list-group-flush">
                     <a asp-page="/Dashboard" class="list-group-item list-group-item-action">Dashboard</a>
@@ -65,6 +66,9 @@
                     </div>
                     <div class="list-group list-group-flush">
                         <a asp-page="/Alerts" class="list-group-item list-group-item-action">Alerts</a>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <a asp-page="/Users" class="list-group-item list-group-item-action">Users</a>
                     </div>
                 </text>
           }
@@ -115,7 +119,20 @@
             </div>
         </div>
     </div>
-  
+
+    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-light text-dark border-secondary">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="userModalLabel">Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="userModalContent">
+                    <div class="text-center">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="modal fade" id="addClientModal" tabindex="-1" aria-labelledby="addClientModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -156,6 +173,57 @@
             </div>
         </div>
     </div>
+
+
+
+
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-light text-dark shadow-sm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUserModalLabel">Add New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-md text-start">
+                        <h2>Add User</h2>
+
+                        <form id="addUser">
+                            <div class="mb-3">
+                                <label for="name" class="form-label text-dark">User's Full Name</label>
+                                <input type="text" class="form-control" id="name" placeholder="Enter Full Name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="username" class="form-label text-dark">Username(Email)</label>
+                                <input type="text" class="form-control" id="username" placeholder="Enter Username" required>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <label for="isAdmin" class="form-check-label text-dark" for="isAdmin">Is Admin</label>
+                                <input class="form-check-input" id="isAdmin" type="checkbox" id="isAdmin">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label text-dark">Password</label>
+                                <input type="text" class="form-control" id="password" placeholder="Enter Default Password" required>
+
+                            </div>
+                            <div class="mb-3">
+                                <p>"Password must be 8-24 characters, and include uppercase, lowercase, and a number."</p>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100" onclick="addUser(event)">Add User</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
 
     <div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -290,6 +358,39 @@
         </div>
     </div>
 
+    <div class="modal fade" id="confirmDeleteUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirm</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Are you sure you want to delete this User?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteUserBtn">Yes, Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-danger text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title">Deletion Blocked</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This user is an admin and cannot be deleted.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @RenderSection("Scripts", required: false)
 
@@ -379,6 +480,47 @@
 </script>
 
 
+
+    <script>
+        let pendingUsernameToDelete = null;
+
+        function deleteUser(username) {
+            pendingUsernameToDelete = username;
+
+            const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeleteUserModal'));
+            confirmModal.show();
+        }
+
+        document.addEventListener('click', (event) => {
+            if (event.target && event.target.id === 'confirmDeleteUserBtn') {
+                if (!pendingUsernameToDelete) return;
+
+        fetch(`/Users?handler=DeleteCurrentUser&username=${encodeURIComponent(pendingUsernameToDelete)}`, {
+            method: 'POST'
+        })
+        .then(response => {
+
+            if (response.ok) {
+                const confirmModalEl = document.getElementById('confirmDeleteUserModal');
+                const modalInstance = bootstrap.Modal.getInstance(confirmModalEl);
+                if (modalInstance) modalInstance.hide();
+
+
+                setTimeout(() => location.reload(), 500);
+            } else {
+                response.text().then(txt => console.error("Server responded with error:", txt));
+               showErrorModal();
+            }
+        })
+        .catch(err => {
+            console.error("Error deleting user:", err);
+            alert("An error occurred.");
+        });
+            }
+        });
+    </script>
+
+   
 
 </body>
 </html>
