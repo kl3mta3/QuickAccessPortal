@@ -30,10 +30,6 @@ public class Program
         }
 
         DatabaseManager.Clients = await DatabaseManager.GetAllClients();
-        //WebAppDashboard.WebAppIP = IPAddress.Loopback.ToString();
-        //WebAppDashboard.WebAppPort = 5000; 
-        //WebAppDashboard.ClientPort = 6000;
-
 
         var app = WebAppDashboard.CreateWebApp(args, WebAppDashboard.WebAppPort);
         var webApp = app.RunAsync();

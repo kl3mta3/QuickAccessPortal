@@ -101,6 +101,12 @@ namespace RemoteAccessPortal.Database
         {
             try
             {
+                Client client = GetClient(clientName);
+                if (client != null)
+                {
+                    throw new InvalidOperationException($"Client with name '{clientName}' already exists.");
+                }
+
                 using var connection = new SqliteConnection($"Data Source={dbPath}");
 
                 await connection.OpenAsync();
@@ -609,7 +615,6 @@ namespace RemoteAccessPortal.Database
 
         public static async Task InsertUser(User user )
         {
-
 
             try
             {
